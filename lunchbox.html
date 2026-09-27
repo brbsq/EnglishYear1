@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunch Box Packer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mustard:#E7A93B;
+    --mustard-dark:#C98F27;
+    --teal-deep:#173C3B;
+    --teal-mid:#215655;
+    --coral:#E2593F;
+    --coral-dark:#C2432B;
+    --cream:#FBF4E6;
+    --ink:#2B2420;
+    --leaf:#5C8A3A;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    height:100%;
+    overflow:hidden;
+    font-family:'Nunito Sans', sans-serif;
+    color:var(--ink);
+    background:var(--teal-deep);
+    -webkit-tap-highlight-color:transparent;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    width:100vw;
+  }
+  #stage{
+    position:relative;
+    flex:1;
+    min-height:0;
+  }
+  #stage canvas{
+    display:block;
+    width:100%;
+    height:100%;
+    touch-action:none;
+  }
+  .chip{
+    position:absolute;
+    top:16px;
+    left:16px;
+    background:rgba(23,60,59,0.72);
+    color:var(--cream);
+    padding:10px 16px;
+    border-radius:10px;
+    backdrop-filter:blur(2px);
+  }
+  .chip h1{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:19px;
+    margin:0 0 2px;
+    line-height:1;
+  }
+  .chip .count{
+    font-size:12.5px;
+    opacity:0.85;
+  }
+  .chip-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:9px;
+  }
+  .chip-btn{
+    border:none;
+    background:rgba(255,255,255,0.16);
+    color:var(--cream);
+    font-family:'Nunito Sans', sans-serif;
+    font-weight:800;
+    font-size:11.5px;
+    padding:0 12px;
+    height:26px;
+    border-radius:13px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .chip-btn:hover{background:rgba(255,255,255,0.28);}
+  .chip-btn.round{
+    width:26px;
+    height:26px;
+    padding:0;
+    border-radius:50%;
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .chip-btn.round.active{background:var(--coral);}
+  #hint{
+    position:absolute;
+    top:16px;
+    right:16px;
+    max-width:200px;
+    text-align:right;
+    font-size:12px;
+    color:var(--cream);
+    opacity:0.75;
+    line-height:1.35;
+    pointer-events:none;
+  }
+  #toast{
+    position:absolute;
+    left:50%;
+    top:16px;
+    transform:translate(-50%,-14px);
+    background:var(--coral-dark);
+    color:var(--cream);
+    font-family:'Baloo 2', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:9px 18px;
+    border-radius:20px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    white-space:nowrap;
+    box-shadow:0 6px 14px rgba(0,0,0,0.3);
+  }
+  #toast.show{
+    opacity:1;
+    transform:translate(-50%,0);
+  }
+  #color-panel{
+    position:absolute;
+    top:92px;
+    right:16px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:7px;
+  }
+  #color-panel .color-label{
+    font-size:11.5px;
+    color:var(--cream);
+    opacity:0.75;
+  }
+  .color-row{
+    display:flex;
+    gap:7px;
+  }
+  .color-swatch{
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,0.45);
+    cursor:pointer;
+    padding:0;
+  }
+  .color-swatch.active{
+    border-color:#fff;
+    box-shadow:0 0 0 2px rgba(0,0,0,0.35);
+  }
+  #zoom-controls{
+    position:absolute;
+    bottom:16px;
+    right:16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .zoom-btn{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:none;
+    background:rgba(23,60,59,0.78);
+    color:var(--cream);
+    font-size:21px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .zoom-btn:active{transform:scale(0.9);}
+  #tray-wrap{
+    flex-shrink:0;
+    background:var(--mustard);
+    padding:14px 14px 16px;
+  }
+  #tray-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:0 4px 10px;
+    gap:10px;
+  }
+  #tray-label{
+    font-family:'Baloo 2', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--teal-deep);
+    margin:0;
+  }
+  #tray-header-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+  }
+  #tray{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    scrollbar-width:thin;
+    max-height:150px;
+    transition:max-height 0.25s ease, opacity 0.2s ease;
+  }
+  #tray-wrap.collapsed #tray{
+    max-height:0;
+    opacity:0;
+    pointer-events:none;
+  }
+  #tray-wrap.collapsed{padding-bottom:10px;}
+  .food-card{
+    flex:0 0 auto;
+    width:96px;
+    background:var(--cream);
+    border-radius:14px;
+    padding:8px 6px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    position:relative;
+    cursor:grab;
+    touch-action:pan-x;
+    user-select:none;
+    transition:transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .food-card:active{cursor:grabbing;}
+  .food-card.lifted{
+    transform:translateY(-4px);
+    box-shadow:0 8px 14px rgba(0,0,0,0.22);
+  }
+  .food-card.full{opacity:0.5;}
+  .thumb-slot{
+    width:72px;
+    height:72px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .thumb-slot img{width:100%;height:100%;}
+  .fname{
+    font-size:12px;
+    font-weight:600;
+    text-align:center;
+    margin-top:2px;
+    line-height:1.15;
+  }
+  .fcount{
+    position:absolute;
+    top:4px;
+    right:4px;
+    min-width:18px;
+    height:18px;
+    padding:0 4px;
+    border-radius:9px;
+    background:var(--coral);
+    color:var(--cream);
+    font-family:'Baloo 2', sans-serif;
+    font-size:11px;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .fcount.zero{
+    background:rgba(43,36,32,0.18);
+    color:var(--ink);
+    opacity:0.7;
+  }
+  .action-btn{
+    flex:0 0 auto;
+    align-self:center;
+    padding:0 16px;
+    height:40px;
+    border:none;
+    border-radius:10px;
+    font-family:'Nunito Sans', sans-serif;
+    font-weight:800;
+    font-size:12.5px;
+    cursor:pointer;
+    white-space:nowrap;
+    color:var(--cream);
+  }
+  #clear-btn{background:var(--teal-deep);}
+  #clear-btn:hover{background:var(--teal-mid);}
+  #newbox-btn{background:var(--coral);}
+  #newbox-btn:hover{background:var(--coral-dark);}
+  #tray-toggle{background:rgba(23,60,59,0.5);}
+  #tray-toggle:hover{background:rgba(23,60,59,0.7);}
+
+  .drag-ghost{
+    position:fixed;
+    width:76px;
+    height:76px;
+    pointer-events:none;
+    z-index:999;
+    transform:translate(-50%,-50%) scale(1.08);
+    filter:drop-shadow(0 8px 12px rgba(0,0,0,0.4));
+  }
+
+  @media (max-width:760px){
+    .food-card{width:82px;}
+    .thumb-slot{width:60px;height:60px;}
+    #hint{max-width:130px;font-size:11px;}
+    #color-panel{top:84px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="scene"></canvas>
+    <div class="chip">
+      <h1>Lunch Box</h1>
+      <div class="count"><span id="total-count">0</span> items packed</div>
+      <div class="chip-actions">
+        <button id="clear-btn" class="chip-btn" type="button">Clear all</button>
+        <button id="bgm-toggle" class="chip-btn round" type="button" aria-label="Turn music on">&#9834;</button>
+      </div>
+    </div>
+    <div id="hint">Tap the lid to open or close the box. Tap or drag food up from below to add it. Tap food inside to take it out.</div>
+    <div id="toast"></div>
+    <div id="color-panel">
+      <div class="color-label">Box colour</div>
+      <div class="color-row" id="color-row"></div>
+    </div>
+    <div id="zoom-controls">
+      <button class="zoom-btn" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      <button class="zoom-btn" id="zoom-out" type="button" aria-label="Zoom out">&minus;</button>
+    </div>
+  </div>
+  <div id="tray-wrap">
+    <div id="tray-header">
+      <p id="tray-label">Tap or drag food into the lunch box</p>
+      <div id="tray-header-actions">
+        <button id="tray-toggle" class="action-btn" type="button" aria-label="Hide food tray">Hide</button>
+        <button id="newbox-btn" class="action-btn" type="button">New lunch box</button>
+      </div>
+    </div>
+    <div id="tray"></div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var MAX_QTY = 5;
+  var FOOD_SCALE = 6.3;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function clampNum(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+  /* ---------------------------------------------------------
+     Basic scene setup
+  --------------------------------------------------------- */
+  var canvas = document.getElementById('scene');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x173C3B);
+
+  var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+
+  var hemi = new THREE.HemisphereLight(0xdff2ea, 0x1a2f22, 0.85);
+  scene.add(hemi);
+
+  var sun = new THREE.DirectionalLight(0xfff3d6, 1.0);
+  sun.position.set(4.4, 7.5, 3.6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -12;
+  sun.shadow.camera.right = 12;
+  sun.shadow.camera.top = 12;
+  sun.shadow.camera.bottom = -12;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 30;
+  scene.add(sun);
+
+  var fill = new THREE.DirectionalLight(0x9ecfe0, 0.25);
+  fill.position.set(-5, 2.5, -4);
+  scene.add(fill);
+
+  /* ---------------------------------------------------------
+     Helpers
+  --------------------------------------------------------- */
+  function mat(color, opts){
+    opts = opts || {};
+    return new THREE.MeshStandardMaterial(Object.assign({
+      color: color,
+      flatShading: true,
+      roughness: 0.75,
+      metalness: 0.03
+    }, opts));
+  }
+
+  function mesh(geo, m){
+    var msh = new THREE.Mesh(geo, m);
+    msh.castShadow = true;
+    msh.receiveShadow = true;
+    return msh;
+  }
+
+  function seeded(seed){
+    var x = Math.sin(seed * 999.7) * 10000;
+    return x - Math.floor(x);
+  }
+
+  function triangleShape(w, h){
+    var s = new THREE.Shape();
+    s.moveTo(0, 0);
+    s.lineTo(w, 0);
+    s.lineTo(0, h);
+    s.lineTo(0, 0);
+    return s;
+  }
+
+  /* ---------------------------------------------------------
+     Food model builders — each returns a low-poly THREE.Group
+  --------------------------------------------------------- */
+  function createSandwich(){
+    var g = new THREE.Group();
+    var w = 0.46, h = 0.36, d = 0.42;
+    var breadMat = mat(0xE9C079);
+    var bread = mesh(new THREE.ExtrudeGeometry(triangleShape(w, h), { depth: d, bevelEnabled: false }), breadMat);
+    bread.geometry.translate(-w / 2, -h / 3, -d / 2);
+    g.add(bread);
+
+    var angle = Math.atan2(h, w);
+    var hypLen = Math.sqrt(w * w + h * h);
+    var cheese = mesh(new THREE.BoxGeometry(hypLen * 0.86, 0.05, d * 0.9), mat(0xF4C430));
+    cheese.rotation.z = -angle;
+    cheese.position.set(
+      -w / 2 + (w / hypLen) * (hypLen / 2) * 0.55 + 0.06,
+      -h / 3 + (h / hypLen) * (hypLen / 2) * 0.9,
+      0
+    );
+    g.add(cheese);
+
+    var lettuce = mesh(new THREE.BoxGeometry(hypLen * 0.8, 0.03, d * 0.82), mat(0x8BC34A));
+    lettuce.rotation.z = -angle;
+    lettuce.position.set(
+      -w / 2 + (w / hypLen) * (hypLen / 2) * 0.4 + 0.03,
+      -h / 3 + (h / hypLen) * (hypLen / 2) * 0.62,
+      0
+    );
+    g.add(lettuce);
+
+    return g;
+  }
+
+  function createPeas(){
+    var g = new THREE.Group();
+    var peaMat = mat(0x7CB342);
+    var offsets = [[0,0,0],[0.09,0.02,0.05],[-0.08,0.03,0.04],[0.02,0.06,-0.08],[-0.05,0.01,-0.07],[0.06,-0.01,-0.02]];
+    offsets.forEach(function(o, i){
+      var s = 0.075 + seeded(i + 1) * 0.015;
+      var p = mesh(new THREE.IcosahedronGeometry(s, 0), peaMat);
+      p.position.set(o[0], o[1] + s, o[2]);
+      g.add(p);
+    });
+    return g;
+  }
+
+  function createApple(){
+    var g = new THREE.Group();
+    var body = mesh(new THREE.IcosahedronGeometry(0.2, 0), mat(0xD1352C));
+    body.scale.set(1, 0.92, 1);
+    body.position.y = 0.19;
+    g.add(body);
+    var stem = mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.1, 5), mat(0x6D4C25));
+    stem.position.y = 0.37;
+    g.add(stem);
+    var leaf = mesh(new THREE.ConeGeometry(0.06, 0.01, 3), mat(0x4CAF50));
+    leaf.rotation.x = Math.PI / 2;
+    leaf.rotation.z = 0.5;
+    leaf.position.set(0.05, 0.38, 0);
+    g.add(leaf);
+    return g;
+  }
+
+  function createBanana(){
+    var g = new THREE.Group();
+    var curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-0.24, 0, 0),
+      new THREE.Vector3(-0.08, 0.09, 0),
+      new THREE.Vector3(0.1, 0.1, 0),
+      new THREE.Vector3(0.26, 0.02, 0)
+    ]);
+    var tube = mesh(new THREE.TubeGeometry(curve, 10, 0.075, 6, false), mat(0xF3D021));
+    g.add(tube);
+    var tip1 = mesh(new THREE.ConeGeometry(0.05, 0.09, 6), mat(0x7A5C1E));
+    tip1.position.set(-0.29, -0.01, 0);
+    tip1.rotation.z = Math.PI / 2 + 0.35;
+    g.add(tip1);
+    var tip2 = mesh(new THREE.ConeGeometry(0.045, 0.07, 6), mat(0x7A5C1E));
+    tip2.position.set(0.31, 0.0, 0);
+    tip2.rotation.z = -Math.PI / 2 + 0.2;
+    g.add(tip2);
+    g.rotation.y = 0.3;
+    return g;
+  }
+
+  function createSteak(){
+    var g = new THREE.Group();
+
+    function blobShape(scale){
+      var pts = [
+        [-0.23,-0.12],[-0.06,-0.17],[0.15,-0.13],[0.24,-0.01],
+        [0.21,0.13],[0.04,0.17],[-0.15,0.15],[-0.25,0.03]
+      ];
+      var s = new THREE.Shape();
+      s.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+      for (var i = 1; i < pts.length; i++) s.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+      s.lineTo(pts[0][0] * scale, pts[0][1] * scale);
+      return s;
+    }
+
+    var searMat = mat(0x4A2117, { roughness: 0.85 });
+    var sear = mesh(new THREE.ExtrudeGeometry(blobShape(1.07), { depth: 0.045, bevelEnabled: false }), searMat);
+    sear.rotation.x = -Math.PI / 2;
+    sear.position.y = 0.012;
+    g.add(sear);
+
+    var meatMat = mat(0x8C4433, { roughness: 0.6 });
+    var meatGeo = new THREE.ExtrudeGeometry(blobShape(1), {
+      depth: 0.11,
+      bevelEnabled: true,
+      bevelThickness: 0.02,
+      bevelSize: 0.018,
+      bevelSegments: 1
+    });
+    var meatTop = mesh(meatGeo, meatMat);
+    meatTop.rotation.x = -Math.PI / 2;
+    meatTop.position.y = 0.045;
+    g.add(meatTop);
+
+    var fatMat = mat(0xDFC08F, { roughness: 0.55 });
+    var fatEdge = mesh(new THREE.BoxGeometry(0.16, 0.05, 0.045), fatMat);
+    fatEdge.position.set(0.19, 0.09, -0.06);
+    fatEdge.rotation.y = 0.5;
+    g.add(fatEdge);
+
+    for (var i = 0; i < 3; i++){
+      var grill = mesh(new THREE.BoxGeometry(0.36, 0.014, 0.05), mat(0x2E1A14, { roughness: 0.9 }));
+      grill.rotation.y = Math.PI / 5;
+      grill.position.set(-0.06 + i * 0.11, 0.179, -0.05 + i * 0.08);
+      g.add(grill);
+    }
+
+    return g;
+  }
+
+  function createCarrot(){
+    var g = new THREE.Group();
+    var length = 0.46, radius = 0.11;
+
+    var body = mesh(new THREE.ConeGeometry(radius, length, 8), mat(0xF07A1F));
+    body.rotation.z = Math.PI / 2;
+    body.position.y = radius;
+    g.add(body);
+
+    var ridgeMat = mat(0xD9691A, { roughness: 0.85 });
+    var ridgeCount = 4;
+    for (var i = 1; i <= ridgeCount; i++){
+      var t = i / (ridgeCount + 1);
+      var localRadius = Math.max(radius * t * 0.94, 0.012);
+      var ring = mesh(new THREE.TorusGeometry(localRadius, 0.009, 5, 10), ridgeMat);
+      ring.rotation.y = Math.PI / 2;
+      ring.position.set(-length / 2 + t * length, radius, 0);
+      g.add(ring);
+    }
+
+    var leafMat = mat(0x4E8C3A);
+    for (var i = 0; i < 3; i++){
+      var leaf = mesh(new THREE.ConeGeometry(0.028, 0.19, 4), leafMat);
+      leaf.rotation.z = -Math.PI / 2 + (i - 1) * 0.38;
+      leaf.position.set(length / 2 + 0.04, radius + (i - 1) * 0.03, (i - 1) * 0.055);
+      g.add(leaf);
+    }
+
+    return g;
+  }
+
+  function createChicken(){
+    var g = new THREE.Group();
+    var meat = mesh(new THREE.IcosahedronGeometry(0.17, 0), mat(0xC98A4B));
+    meat.scale.set(1.3, 1.05, 0.95);
+    meat.position.set(-0.03, 0.18, 0);
+    g.add(meat);
+
+    var bone = mesh(new THREE.CylinderGeometry(0.03, 0.036, 0.26, 6), mat(0xF3ECDD));
+    bone.rotation.z = Math.PI / 2;
+    bone.position.set(0.23, 0.15, 0.02);
+    g.add(bone);
+
+    var knuckle = mesh(new THREE.IcosahedronGeometry(0.05, 0), mat(0xF3ECDD));
+    knuckle.position.set(0.36, 0.13, 0.03);
+    g.add(knuckle);
+
+    return g;
+  }
+
+  function createCake(){
+    var g = new THREE.Group();
+    var w = 0.38, h = 0.34, d = 0.34;
+    var spongeMat = mat(0x4A2C1D, { roughness: 0.78 });
+    var sponge = mesh(new THREE.ExtrudeGeometry(triangleShape(w, h), { depth: d, bevelEnabled: false }), spongeMat);
+    sponge.geometry.translate(-w / 2, -h / 3, -d / 2);
+    g.add(sponge);
+
+    var angle = Math.atan2(h, w);
+    var hypLen = Math.sqrt(w * w + h * h);
+    var ganacheMat = mat(0x2A1810, { roughness: 0.3, metalness: 0.12 });
+    var ganache = mesh(new THREE.BoxGeometry(hypLen * 0.85, 0.07, d * 0.9), ganacheMat);
+    ganache.rotation.z = -angle;
+    ganache.position.set(
+      -w / 2 + (w / hypLen) * (hypLen / 2) * 0.55 + 0.05,
+      -h / 3 + (h / hypLen) * (hypLen / 2) * 0.95,
+      0
+    );
+    g.add(ganache);
+
+    var drip1 = mesh(new THREE.CylinderGeometry(0.018, 0.01, 0.08, 5), ganacheMat);
+    drip1.position.set(
+      -w / 2 + (w / hypLen) * (hypLen / 2) * 0.32 + 0.03,
+      -h / 3 + (h / hypLen) * (hypLen / 2) * 0.78,
+      d * 0.16
+    );
+    g.add(drip1);
+
+    var drip2 = mesh(new THREE.CylinderGeometry(0.016, 0.009, 0.07, 5), ganacheMat);
+    drip2.position.set(
+      -w / 2 + (w / hypLen) * (hypLen / 2) * 0.72 + 0.03,
+      -h / 3 + (h / hypLen) * (hypLen / 2) * 0.6,
+      -d * 0.14
+    );
+    g.add(drip2);
+
+    var creamMat = mat(0xFFF6E8, { roughness: 0.5 });
+    var cream = mesh(new THREE.IcosahedronGeometry(0.045, 0), creamMat);
+    cream.position.set(-w / 2 + 0.06, h * 0.62, 0);
+    g.add(cream);
+
+    return g;
+  }
+
+  function createPizza(){
+    var g = new THREE.Group();
+
+    /* one solid wedge for the base + melted topping, its side faces
+       reading naturally darker than the top under flat shading —
+       matching the simple, iconic look of a low-poly pizza slice.
+       Note: after the -90° X rotation below, a shape point at local
+       y=+h lands at world z=-h, so the wide back edge (local y=0.44)
+       sits at world z=-0.44 — every accessory below is placed to
+       match that, instead of floating off on the wrong side. */
+    var sliceShape = new THREE.Shape();
+    sliceShape.moveTo(0, 0);
+    sliceShape.lineTo(-0.24, 0.44);
+    sliceShape.lineTo(0.24, 0.44);
+    sliceShape.lineTo(0, 0);
+    var slice = mesh(new THREE.ExtrudeGeometry(sliceShape, {
+      depth: 0.09,
+      bevelEnabled: true,
+      bevelThickness: 0.01,
+      bevelSize: 0.01,
+      bevelSegments: 1
+    }), mat(0xF2A33E, { roughness: 0.55 }));
+    slice.rotation.x = -Math.PI / 2;
+    slice.position.y = 0.045;
+    g.add(slice);
+
+    /* pale crust band along the outer curved (back) edge — raised
+       clearly clear of the slab's own top surface so it never reads
+       as buried inside the solid mesh */
+    var crustMat = mat(0xEFCB86, { roughness: 0.7 });
+    var crust = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), crustMat);
+    crust.rotation.z = Math.PI / 2;
+    crust.position.set(0, 0.19, -0.42);
+    g.add(crust);
+    var crustCapL = mesh(new THREE.IcosahedronGeometry(0.05, 0), crustMat);
+    crustCapL.position.set(-0.25, 0.19, -0.42);
+    g.add(crustCapL);
+    var crustCapR = mesh(new THREE.IcosahedronGeometry(0.05, 0), crustMat);
+    crustCapR.position.set(0.25, 0.19, -0.42);
+    g.add(crustCapR);
+
+    /* pepperoni scattered across the top of the slice */
+    var pepMat = mat(0xC1442E, { roughness: 0.55 });
+    var pepRimMat = mat(0x8B3020, { roughness: 0.7 });
+    var pepperoniSpots = [[0, -0.14], [-0.09, -0.22], [0.1, -0.2], [-0.02, -0.32], [0, -0.08]];
+    pepperoniSpots.forEach(function(p){
+      var pep = mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.022, 8), pepMat);
+      pep.position.set(p[0], 0.151, p[1]);
+      g.add(pep);
+      var rim = mesh(new THREE.TorusGeometry(0.037, 0.006, 5, 10), pepRimMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(p[0], 0.162, p[1]);
+      g.add(rim);
+    });
+
+
+    return g;
+  }
+
+  function createSausage(){
+    var g = new THREE.Group();
+    var body = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.34, 6), mat(0xA94442));
+    body.rotation.z = Math.PI / 2;
+    body.position.y = 0.075;
+    g.add(body);
+    var capA = mesh(new THREE.IcosahedronGeometry(0.075, 0), mat(0xA94442));
+    capA.position.set(-0.17, 0.075, 0);
+    g.add(capA);
+    var capB = mesh(new THREE.IcosahedronGeometry(0.075, 0), mat(0xA94442));
+    capB.position.set(0.17, 0.075, 0);
+    g.add(capB);
+    for (var i = -1; i <= 1; i += 2){
+      var band = mesh(new THREE.CylinderGeometry(0.079, 0.079, 0.02, 6), mat(0x7C2F2D));
+      band.rotation.z = Math.PI / 2;
+      band.position.set(i * 0.09, 0.075, 0);
+      g.add(band);
+    }
+    return g;
+  }
+
+  /* ---------------------------------------------------------
+     Food catalogue
+  --------------------------------------------------------- */
+  var FOODS = [
+    { id: 'sandwich', name: 'Cheese Sandwich', create: createSandwich },
+    { id: 'peas',     name: 'Peas',            create: createPeas },
+    { id: 'apple',    name: 'Apple',           create: createApple },
+    { id: 'banana',   name: 'Banana',          create: createBanana },
+    { id: 'steak',    name: 'Steak',           create: createSteak },
+    { id: 'carrot',   name: 'Carrot',          create: createCarrot },
+    { id: 'chicken',  name: 'Chicken',         create: createChicken },
+    { id: 'cake',     name: 'Cake',             create: createCake },
+    { id: 'pizza',    name: 'Pizza',           create: createPizza },
+    { id: 'sausage',  name: 'Sausage',         create: createSausage }
+  ];
+
+  var quantities = {};
+  FOODS.forEach(function(f){ quantities[f.id] = 0; });
+
+  /* ---------------------------------------------------------
+     Size the grid first: measure every food's true footprint,
+     centered on its own geometry rather than its (sometimes
+     off-centre) local origin, so a slot can be sized to
+     guarantee no two items ever touch, no matter how a food
+     happens to be spun in its slot. The box is then built to
+     fit exactly a 3 x 2 grid of those slots — six slots, one
+     item each, a single layer.
+  --------------------------------------------------------- */
+  var probeBox = new THREE.Box3();
+  var maxFootprintRadius = 0;
+  FOODS.forEach(function(food){
+    var probe = food.create();
+    probeBox.setFromObject(probe);
+    /* Several foods (pizza, carrot, banana, sausage, chicken) aren't
+       modeled centered on their own local origin. Since each item is
+       later spun by a random angle about that same origin, the safe
+       radius has to be measured from the origin to the AABB's
+       farthest corner — not from the AABB's own center — or a long
+       or off-centre food can swing outside its slot when rotated. */
+    var maxAbsX = Math.max(Math.abs(probeBox.min.x), Math.abs(probeBox.max.x));
+    var maxAbsZ = Math.max(Math.abs(probeBox.min.z), Math.abs(probeBox.max.z));
+    var r = Math.sqrt(maxAbsX * maxAbsX + maxAbsZ * maxAbsZ);
+    if (r > maxFootprintRadius) maxFootprintRadius = r;
+  });
+  var ITEM_RADIUS = maxFootprintRadius * FOOD_SCALE;
+  var CELL = ITEM_RADIUS * 2 + 0.55;
+
+  var COLS = 3, ROWS = 2;
+  var INNER_W = COLS * CELL;
+  var INNER_D = ROWS * CELL;
+
+  var THICK = 0.125, WALL_H = 2.85;
+  var BOX_W = INNER_W + THICK * 2 + 0.2;
+  var BOX_D = INNER_D + THICK * 2 + 0.2;
+
+  /* ---------------------------------------------------------
+     Ground: no visible surface, just a shadow catcher sized
+     around the lunch box so the box reads as grounded without
+     a solid slab sitting under it
+  --------------------------------------------------------- */
+  var shadowPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(BOX_W + 6, BOX_D + 6),
+    new THREE.ShadowMaterial({ opacity: 0.32 })
+  );
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.position.y = -0.001;
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
+
+  /* ---------------------------------------------------------
+     Lunch box model
+  --------------------------------------------------------- */
+  var box = new THREE.Group();
+
+  var BOX_COLORS = [0xE2593F, 0x2E86AB, 0x3FA34D, 0xF2B134, 0x8E44AD, 0xE84393, 0x16A085, 0xD35400];
+  var boxColorIndex = 0;
+  var boxBodyMat = mat(BOX_COLORS[boxColorIndex], { roughness: 0.55 });
+  var boxInsideMat = mat(0xF5E3B8, { roughness: 0.8 });
+  var boxTrimMat = mat(0x173C3B, { roughness: 0.6 });
+
+  function setBoxColor(hex){
+    boxBodyMat.color.setHex(hex);
+    var swatches = document.querySelectorAll('.color-swatch');
+    for (var i = 0; i < swatches.length; i++){
+      swatches[i].classList.toggle('active', parseInt(swatches[i].getAttribute('data-hex'), 16) === hex);
+    }
+  }
+
+  function randomBoxColor(){
+    var choices = BOX_COLORS.filter(function(c){ return c !== boxBodyMat.color.getHex(); });
+    var pick = choices[Math.floor(Math.random() * choices.length)];
+    setBoxColor(pick);
+  }
+
+  var bottom = mesh(new THREE.BoxGeometry(BOX_W, THICK, BOX_D), boxBodyMat);
+  bottom.position.y = THICK / 2;
+  box.add(bottom);
+
+  var wallFront = mesh(new THREE.BoxGeometry(BOX_W, WALL_H, THICK), boxBodyMat);
+  wallFront.position.set(0, WALL_H / 2, BOX_D / 2 - THICK / 2);
+  box.add(wallFront);
+
+  var wallBack = mesh(new THREE.BoxGeometry(BOX_W, WALL_H, THICK), boxBodyMat);
+  wallBack.position.set(0, WALL_H / 2, -BOX_D / 2 + THICK / 2);
+  box.add(wallBack);
+
+  var wallLeft = mesh(new THREE.BoxGeometry(THICK, WALL_H, BOX_D), boxBodyMat);
+  wallLeft.position.set(-BOX_W / 2 + THICK / 2, WALL_H / 2, 0);
+  box.add(wallLeft);
+
+  var wallRight = mesh(new THREE.BoxGeometry(THICK, WALL_H, BOX_D), boxBodyMat);
+  wallRight.position.set(BOX_W / 2 - THICK / 2, WALL_H / 2, 0);
+  box.add(wallRight);
+
+  var inner = mesh(new THREE.BoxGeometry(BOX_W - THICK * 2 - 0.02, WALL_H - THICK, BOX_D - THICK * 2 - 0.02), boxInsideMat);
+  inner.position.set(0, (WALL_H - THICK) / 2 + THICK * 0.6, 0);
+  inner.material.side = THREE.BackSide;
+  inner.castShadow = false;
+  box.add(inner);
+
+  var trimFront = mesh(new THREE.BoxGeometry(BOX_W - 0.14, 0.06, 0.04), boxTrimMat);
+  trimFront.position.set(0, WALL_H - 0.1, BOX_D / 2 - 0.02);
+  box.add(trimFront);
+
+  var lidPivot = new THREE.Group();
+  lidPivot.position.set(0, WALL_H, -BOX_D / 2 + THICK / 2);
+  box.add(lidPivot);
+
+  var lidGroup = new THREE.Group();
+  lidPivot.add(lidGroup);
+
+  var lid = mesh(new THREE.BoxGeometry(BOX_W + 0.1, THICK, BOX_D + 0.1), boxBodyMat);
+  lid.position.set(0, THICK / 2, BOX_D / 2);
+  lid.userData.isLid = true;
+  lidGroup.add(lid);
+
+  var handle = mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 10), boxTrimMat);
+  handle.rotation.x = Math.PI / 2;
+  handle.position.set(0, THICK / 2 + 0.06, BOX_D / 2);
+  handle.userData.isLid = true;
+  lidGroup.add(handle);
+
+  var latch = mesh(new THREE.BoxGeometry(0.38, 0.18, 0.07), boxTrimMat);
+  latch.position.set(0, WALL_H - 0.02, BOX_D / 2 + 0.02);
+  latch.userData.isLid = true;
+  box.add(latch);
+
+  scene.add(box);
+
+  var lidOpenAngle = -2.05;
+  var lidIsOpen = false;
+  lidPivot.rotation.x = 0;
+  var lidAnimStart = null, lidAnimFrom = 0, lidAnimTo = 0, lidAnimDuration = 700, lidAnimCallback = null;
+
+  function animateLid(toAngle, callback){
+    if (reduceMotion){
+      lidPivot.rotation.x = toAngle;
+      if (callback) callback();
+      return;
+    }
+    lidAnimFrom = lidPivot.rotation.x;
+    lidAnimTo = toAngle;
+    lidAnimStart = clock.getElapsedTime() * 1000;
+    lidAnimCallback = callback || null;
+  }
+
+  /* ---------------------------------------------------------
+     Packing grid inside the box — one item per slot, single layer
+  --------------------------------------------------------- */
+  var itemsGroup = new THREE.Group();
+  box.add(itemsGroup);
+
+  var LAYER_H = 1.26;
+  var BASE_Y = THICK + 0.02;
+  var BOX_LAYER_LIMIT = 1;
+  var BOX_CAPACITY = COLS * ROWS * BOX_LAYER_LIMIT;
+
+  var animQueue = [];
+
+  function slotPosition(slot){
+    var perLayer = COLS * ROWS;
+    var layer = Math.floor(slot / perLayer);
+    var idxInLayer = slot % perLayer;
+    var c = idxInLayer % COLS;
+    var r = Math.floor(idxInLayer / COLS);
+    var jx = (seeded(slot * 3 + 1) - 0.5) * 0.15;
+    var jz = (seeded(slot * 3 + 2) - 0.5) * 0.15;
+    var rot = seeded(slot * 3 + 3) * Math.PI * 2;
+    return {
+      x: -INNER_W / 2 + CELL / 2 + c * CELL + jx,
+      z: -INNER_D / 2 + CELL / 2 + r * CELL + jz,
+      y: BASE_Y + layer * LAYER_H,
+      rot: rot
+    };
+  }
+
+  function rebuildItems(){
+    while (itemsGroup.children.length){
+      itemsGroup.remove(itemsGroup.children[0]);
+    }
+    animQueue = [];
+    var slot = 0;
+    FOODS.forEach(function(food){
+      var qty = quantities[food.id];
+      for (var i = 0; i < qty; i++){
+        var pos = slotPosition(slot);
+        var g = food.create();
+
+        /* Re-centre the model on its own footprint so it spins
+           around its own middle, not around some arbitrary
+           reference point baked into its geometry. */
+        var b = new THREE.Box3().setFromObject(g);
+        var cx = (b.min.x + b.max.x) / 2;
+        var cz = (b.min.z + b.max.z) / 2;
+        g.position.x -= cx;
+        g.position.z -= cz;
+
+        var wrap = new THREE.Group();
+        wrap.add(g);
+        wrap.userData.foodId = food.id;
+        wrap.position.set(pos.x, pos.y + 0.6, pos.z);
+        wrap.rotation.y = pos.rot;
+        var finalY = pos.y;
+        wrap.scale.setScalar(reduceMotion ? FOOD_SCALE : 0.001);
+        itemsGroup.add(wrap);
+        animQueue.push({
+          obj: wrap,
+          delay: reduceMotion ? 0 : slot * 30,
+          duration: 420,
+          startY: pos.y + 0.6,
+          endY: finalY,
+          started: null
+        });
+        slot++;
+      }
+    });
+    updateSummary();
+  }
+
+  function updateSummary(){
+    var total = getTotalCount();
+    document.getElementById('total-count').textContent = total;
+  }
+
+  function getTotalCount(){
+    var total = 0;
+    FOODS.forEach(function(f){ total += quantities[f.id]; });
+    return total;
+  }
+
+  function updateCardBadge(id){
+    var el = document.getElementById('count-' + id);
+    var card = document.querySelector('.food-card[data-id="' + id + '"]');
+    var qty = quantities[id];
+    el.textContent = qty;
+    el.classList.toggle('zero', qty === 0);
+    if (card) card.classList.toggle('full', qty >= MAX_QTY);
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1600);
+  }
+
+  function addFood(id){
+    if (!lidIsOpen){
+      playTone('thud');
+      showToast('Open the lunch box first');
+      return;
+    }
+    if (getTotalCount() >= BOX_CAPACITY){
+      playTone('thud');
+      showToast('Lunch box is full!');
+      return;
+    }
+    if (quantities[id] >= MAX_QTY){
+      playTone('thud');
+      showToast('You already have plenty of that');
+      return;
+    }
+    quantities[id]++;
+    updateCardBadge(id);
+    rebuildItems();
+    playTone('pop');
+  }
+
+  function removeOneFood(id){
+    if (quantities[id] <= 0) return;
+    quantities[id]--;
+    updateCardBadge(id);
+    rebuildItems();
+    playTone('thud');
+  }
+
+  function clearAll(){
+    FOODS.forEach(function(f){
+      quantities[f.id] = 0;
+      updateCardBadge(f.id);
+    });
+    rebuildItems();
+    playTone('thud');
+  }
+
+  /* ---------------------------------------------------------
+     Random surprise contents — only used by "New lunch box",
+     never by simply opening/closing the lid
+  --------------------------------------------------------- */
+  function generateRandomContents(){
+    FOODS.forEach(function(f){ quantities[f.id] = 0; });
+    var iA = Math.floor(Math.random() * FOODS.length);
+    var iB;
+    do { iB = Math.floor(Math.random() * FOODS.length); } while (iB === iA);
+    var foodA = FOODS[iA], foodB = FOODS[iB];
+    var qtyA = foodA.id === 'peas' ? 3 : (1 + Math.floor(Math.random() * 3));
+    var qtyB = foodB.id === 'peas' ? 3 : 1;
+    quantities[foodA.id] = Math.min(qtyA, MAX_QTY);
+    quantities[foodB.id] = Math.min(qtyB, MAX_QTY);
+    FOODS.forEach(function(f){ updateCardBadge(f.id); });
+    rebuildItems();
+  }
+
+  function openBox(){
+    if (lidIsOpen) return;
+    lidIsOpen = true;
+    animateLid(lidOpenAngle, null);
+    playTone('lidOpen');
+  }
+
+  function closeBox(callback){
+    if (!lidIsOpen){
+      if (callback) callback();
+      return;
+    }
+    lidIsOpen = false;
+    animateLid(0, callback);
+    playTone('lidClose');
+  }
+
+  function toggleLid(){
+    if (lidIsOpen) closeBox(); else openBox();
+  }
+
+  function newLunchbox(){
+    function refill(){
+      randomBoxColor();
+      generateRandomContents();
+      openBox();
+    }
+    if (lidIsOpen){
+      closeBox(refill);
+    } else {
+      refill();
+    }
+  }
+
+  /* ---------------------------------------------------------
+     Thumbnails for the tray cards (rendered once, static)
+  --------------------------------------------------------- */
+  function makeThumbCanvas(food){
+    var c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    var r = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: true });
+    r.setPixelRatio(1);
+    r.setSize(128, 128, false);
+    var sc = new THREE.Scene();
+    var cam = new THREE.PerspectiveCamera(32, 1, 0.1, 10);
+    cam.position.set(0.6, 0.62, 0.9);
+    cam.lookAt(0, 0.16, 0);
+    var h = new THREE.HemisphereLight(0xffffff, 0x555555, 1.15);
+    sc.add(h);
+    var d = new THREE.DirectionalLight(0xffffff, 0.75);
+    d.position.set(2, 3, 2);
+    sc.add(d);
+    var g = food.create();
+    sc.add(g);
+    r.render(sc, cam);
+    return c.toDataURL('image/png');
+  }
+
+  var thumbUrls = {};
+  FOODS.forEach(function(f){ thumbUrls[f.id] = makeThumbCanvas(f); });
+
+  /* ---------------------------------------------------------
+     Tray UI
+  --------------------------------------------------------- */
+  var tray = document.getElementById('tray');
+
+  FOODS.forEach(function(food){
+    var card = document.createElement('div');
+    card.className = 'food-card';
+    card.setAttribute('data-id', food.id);
+
+    var slot = document.createElement('div');
+    slot.className = 'thumb-slot';
+    var img = document.createElement('img');
+    img.src = thumbUrls[food.id];
+    img.draggable = false;
+    slot.appendChild(img);
+    card.appendChild(slot);
+
+    var name = document.createElement('div');
+    name.className = 'fname';
+    name.textContent = food.name;
+    card.appendChild(name);
+
+    var badge = document.createElement('div');
+    badge.className = 'fcount zero';
+    badge.id = 'count-' + food.id;
+    badge.textContent = '0';
+    card.appendChild(badge);
+
+    tray.appendChild(card);
+
+    card.addEventListener('pointerdown', function(e){
+      startCardDrag(e, food);
+    });
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', clearAll);
+  document.getElementById('newbox-btn').addEventListener('click', newLunchbox);
+
+  var trayWrap = document.getElementById('tray-wrap');
+  var trayToggleBtn = document.getElementById('tray-toggle');
+  var trayCollapsed = false;
+  trayToggleBtn.addEventListener('click', function(){
+    trayCollapsed = !trayCollapsed;
+    trayWrap.classList.toggle('collapsed', trayCollapsed);
+    trayToggleBtn.textContent = trayCollapsed ? 'Show' : 'Hide';
+    trayToggleBtn.setAttribute('aria-label', trayCollapsed ? 'Show food tray' : 'Hide food tray');
+    resize();
+    setTimeout(resize, 260);
+  });
+
+  var stageEl = document.getElementById('stage');
+
+  function startCardDrag(e, food){
+    var startX = e.clientX, startY = e.clientY;
+    var started = false;
+    var ghost = null;
+    var card = document.querySelector('.food-card[data-id="' + food.id + '"]');
+
+    function onMove(ev){
+      var dx = ev.clientX - startX;
+      var dy = ev.clientY - startY;
+      if (!started){
+        if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)){
+          started = true;
+          card.classList.add('lifted');
+          ghost = document.createElement('img');
+          ghost.className = 'drag-ghost';
+          ghost.src = thumbUrls[food.id];
+          ghost.style.left = ev.clientX + 'px';
+          ghost.style.top = ev.clientY + 'px';
+          document.body.appendChild(ghost);
+        } else if (Math.abs(dx) > 10){
+          cleanup();
+          return;
+        } else {
+          return;
+        }
+      }
+      ev.preventDefault();
+      if (ghost){
+        ghost.style.left = ev.clientX + 'px';
+        ghost.style.top = ev.clientY + 'px';
+        var over = isOverStage(ev.clientX, ev.clientY);
+        ghost.style.opacity = over ? '1' : '0.45';
+      }
+    }
+
+    function onUp(ev){
+      if (started && ghost){
+        if (isOverStage(ev.clientX, ev.clientY)){
+          addFood(food.id);
+        }
+      } else if (!started){
+        /* a plain tap/click on the card, no drag involved */
+        addFood(food.id);
+      }
+      cleanup();
+    }
+
+    function cleanup(){
+      if (card) card.classList.remove('lifted');
+      if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  }
+
+  function isOverStage(x, y){
+    var rect = stageEl.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  /* ---------------------------------------------------------
+     Colour swatches
+  --------------------------------------------------------- */
+  var colorRow = document.getElementById('color-row');
+  BOX_COLORS.forEach(function(hex, i){
+    var btn = document.createElement('button');
+    btn.className = 'color-swatch' + (i === boxColorIndex ? ' active' : '');
+    btn.style.background = '#' + hex.toString(16).padStart(6, '0');
+    btn.setAttribute('data-hex', hex.toString(16));
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Set lunch box colour');
+    btn.addEventListener('click', function(){ setBoxColor(hex); });
+    colorRow.appendChild(btn);
+  });
+  setBoxColor(BOX_COLORS[boxColorIndex]);
+
+  /* ---------------------------------------------------------
+     Tiny synthesized sound effects
+  --------------------------------------------------------- */
+  var audioCtx = null;
+  function ensureAudio(){
+    if (!audioCtx){
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    }
+    return audioCtx;
+  }
+  function playTone(kind){
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    var now = ctx.currentTime;
+
+    function thickThump(startTime, baseFreq, subFreq, peakGain, dur){
+      var o1 = ctx.createOscillator(), g1 = ctx.createGain();
+      o1.type = 'sine';
+      o1.frequency.setValueAtTime(baseFreq, startTime);
+      o1.frequency.exponentialRampToValueAtTime(baseFreq * 0.55, startTime + dur * 0.85);
+      g1.gain.setValueAtTime(0.0001, startTime);
+      g1.gain.linearRampToValueAtTime(peakGain, startTime + 0.014);
+      g1.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+      o1.connect(g1); g1.connect(ctx.destination);
+      o1.start(startTime); o1.stop(startTime + dur + 0.02);
+
+      var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(subFreq, startTime);
+      g2.gain.setValueAtTime(0.0001, startTime);
+      g2.gain.linearRampToValueAtTime(peakGain * 0.65, startTime + 0.018);
+      g2.gain.exponentialRampToValueAtTime(0.0001, startTime + dur * 0.9);
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.start(startTime); o2.stop(startTime + dur);
+
+      var len = Math.floor(ctx.sampleRate * 0.03);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++){
+        d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      }
+      var noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      var lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 450;
+      var ng = ctx.createGain();
+      ng.gain.setValueAtTime(peakGain * 0.45, startTime);
+      ng.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.05);
+      noise.connect(lp); lp.connect(ng); ng.connect(ctx.destination);
+      noise.start(startTime);
+    }
+
+    if (kind === 'lidOpen'){
+      thickThump(now, 85, 42, 0.24, 0.28);
+
+      var lo2 = ctx.createOscillator(), lg2 = ctx.createGain();
+      lo2.type = 'triangle';
+      lo2.frequency.setValueAtTime(300, now + 0.1);
+      lo2.frequency.exponentialRampToValueAtTime(640, now + 0.24);
+      lg2.gain.setValueAtTime(0.0001, now + 0.1);
+      lg2.gain.linearRampToValueAtTime(0.06, now + 0.12);
+      lg2.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+      lo2.connect(lg2); lg2.connect(ctx.destination);
+      lo2.start(now + 0.1); lo2.stop(now + 0.29);
+      return;
+    }
+
+    if (kind === 'lidClose'){
+      thickThump(now, 65, 32, 0.28, 0.26);
+
+      var len = Math.floor(ctx.sampleRate * 0.05);
+      var buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < len; i++){
+        data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      }
+      var noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      var filt = ctx.createBiquadFilter();
+      filt.type = 'highpass';
+      filt.frequency.value = 1800;
+      var ng2 = ctx.createGain();
+      ng2.gain.setValueAtTime(0.0001, now);
+      ng2.gain.setValueAtTime(0.16, now + 0.1);
+      ng2.gain.exponentialRampToValueAtTime(0.0001, now + 0.17);
+      noise.connect(filt); filt.connect(ng2); ng2.connect(ctx.destination);
+      noise.start(now + 0.1);
+      return;
+    }
+
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (kind === 'pop'){
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } else {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+  }
+
+  /* ---------------------------------------------------------
+     Procedural jazz-cafe background music
+     Walking bass + soft comping pad chords + brushed hats,
+     scheduled with a standard Web Audio lookahead scheduler.
+  --------------------------------------------------------- */
+  var bgmGain = null;
+  var bgmOn = false;
+  var bgmTimer = null;
+  var bgmNextNoteTime = 0;
+  var bgmBeatIndex = 0;
+  var BGM_TEMPO = 96;
+  var BGM_BEAT = 60 / BGM_TEMPO;
+
+  /* ii - V - I - vi turnaround, one chord per bar, walking bass under each */
+  var BGM_CHORDS = [
+    { bass: [73.42, 110.00, 146.83, 87.31], pad: [174.61, 220.00, 261.63, 329.63] },  /* Dm7 */
+    { bass: [98.00, 123.47, 146.83, 87.31], pad: [246.94, 293.66, 349.23, 440.00] },  /* G7  */
+    { bass: [65.41, 82.41, 98.00, 123.47], pad: [164.81, 196.00, 246.94, 293.66] },   /* Cmaj7 */
+    { bass: [110.00, 130.81, 164.81, 98.00], pad: [164.81, 196.00, 261.63, 329.63] }  /* Am7 */
+  ];
+
+  function ensureBgmGraph(){
+    var ctx = ensureAudio();
+    if (!ctx) return null;
+    if (!bgmGain){
+      bgmGain = ctx.createGain();
+      bgmGain.gain.value = 0.9;
+      bgmGain.connect(ctx.destination);
+    }
+    return ctx;
+  }
+
+  function bgmBassNote(ctx, freq, time, dur){
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, time);
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.linearRampToValueAtTime(0.16, time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur * 0.92);
+    osc.connect(g);
+    g.connect(bgmGain);
+    osc.start(time);
+    osc.stop(time + dur);
+  }
+
+  function bgmPadChord(ctx, freqs, time, dur){
+    freqs.forEach(function(freq, idx){
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      var filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.value = 1100;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, time);
+      osc.detune.setValueAtTime((idx - 1.5) * 5, time);
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.linearRampToValueAtTime(0.045, time + 0.5);
+      g.gain.linearRampToValueAtTime(0.0001, time + dur);
+      osc.connect(filt);
+      filt.connect(g);
+      g.connect(bgmGain);
+      osc.start(time);
+      osc.stop(time + dur + 0.05);
+    });
+  }
+
+  function bgmBrush(ctx, time){
+    var len = Math.floor(ctx.sampleRate * 0.1);
+    var buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < len; i++){
+      data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    }
+    var noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    var filt = ctx.createBiquadFilter();
+    filt.type = 'highpass';
+    filt.frequency.value = 3200;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.045, time);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
+    noise.connect(filt);
+    filt.connect(g);
+    g.connect(bgmGain);
+    noise.start(time);
+  }
+
+  function bgmSchedule(){
+    var ctx = ensureBgmGraph();
+    if (!ctx || !bgmOn) return;
+    while (bgmNextNoteTime < ctx.currentTime + 0.15){
+      var bar = Math.floor(bgmBeatIndex / 4) % BGM_CHORDS.length;
+      var beat = bgmBeatIndex % 4;
+      var chord = BGM_CHORDS[bar];
+      bgmBassNote(ctx, chord.bass[beat], bgmNextNoteTime, BGM_BEAT * 0.92);
+      if (beat === 0) bgmPadChord(ctx, chord.pad, bgmNextNoteTime, BGM_BEAT * 4);
+      if (beat === 1 || beat === 3) bgmBrush(ctx, bgmNextNoteTime + BGM_BEAT * 0.5);
+      bgmNextNoteTime += BGM_BEAT;
+      bgmBeatIndex++;
+    }
+  }
+
+  function startBgm(){
+    var ctx = ensureBgmGraph();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    bgmOn = true;
+    bgmNextNoteTime = ctx.currentTime + 0.05;
+    bgmBeatIndex = 0;
+    if (bgmTimer) clearInterval(bgmTimer);
+    bgmTimer = setInterval(bgmSchedule, 100);
+  }
+
+  function stopBgm(){
+    bgmOn = false;
+    if (bgmTimer){ clearInterval(bgmTimer); bgmTimer = null; }
+  }
+
+  var bgmBtn = document.getElementById('bgm-toggle');
+  function setBgmUI(isOn){
+    bgmBtn.classList.toggle('active', isOn);
+    bgmBtn.setAttribute('aria-label', isOn ? 'Turn music off' : 'Turn music on');
+  }
+  bgmBtn.addEventListener('click', function(){
+    if (bgmOn){
+      stopBgm();
+      setBgmUI(false);
+    } else {
+      startBgm();
+      setBgmUI(true);
+    }
+  });
+
+  /* Music defaults to on. Browsers won't let audio actually make
+     sound until the person interacts with the page at least once,
+     so the scheduler starts right away and a one-time listener
+     resumes the audio context on the first tap/click/key press. */
+  setBgmUI(true);
+  startBgm();
+  function unlockBgmAudio(){
+    var ctx = ensureBgmGraph();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    document.removeEventListener('pointerdown', unlockBgmAudio);
+    document.removeEventListener('keydown', unlockBgmAudio);
+  }
+  document.addEventListener('pointerdown', unlockBgmAudio);
+  document.addEventListener('keydown', unlockBgmAudio);
+
+  /* ---------------------------------------------------------
+     Camera: orbit (drag), zoom (wheel / pinch / buttons), tap
+  --------------------------------------------------------- */
+  var camTarget = new THREE.Vector3(0, 3, 0);
+  var camState = { theta: Math.PI * 0.28, phi: Math.PI * 0.38, radius: 25 };
+  var ZOOM_MIN = 10, ZOOM_MAX = 42;
+
+  function updateCamera(){
+    var phi = clampNum(camState.phi, 0.25, 1.35);
+    camera.position.x = camTarget.x + camState.radius * Math.sin(phi) * Math.sin(camState.theta);
+    camera.position.z = camTarget.z + camState.radius * Math.sin(phi) * Math.cos(camState.theta);
+    camera.position.y = camTarget.y + camState.radius * Math.cos(phi);
+    camera.lookAt(camTarget);
+  }
+
+  var raycaster = new THREE.Raycaster();
+  var pointerNdc = new THREE.Vector2();
+
+  function handleStageTap(x, y){
+    var rect = canvas.getBoundingClientRect();
+    pointerNdc.x = ((x - rect.left) / rect.width) * 2 - 1;
+    pointerNdc.y = -((y - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointerNdc, camera);
+    var hits = raycaster.intersectObjects(scene.children, true);
+    if (!hits.length) return;
+    var walker = hits[0].object;
+    while (walker){
+      if (lidIsOpen && walker.userData && walker.userData.foodId){
+        removeOneFood(walker.userData.foodId);
+        return;
+      }
+      if (walker.userData && walker.userData.isLid){
+        toggleLid();
+        return;
+      }
+      walker = walker.parent;
+    }
+  }
+
+  var pointers = {};
+  var pointerCount = 0;
+  var orbiting = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
+  var pinchStartDist = 0, pinchStartRadius = 0;
+
+  function pointerDist(){
+    var ids = Object.keys(pointers);
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    var dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  canvas.addEventListener('pointerdown', function(e){
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    pointerCount = Object.keys(pointers).length;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    if (pointerCount === 1){
+      orbiting = true;
+      lastX = e.clientX; lastY = e.clientY;
+      downX = e.clientX; downY = e.clientY;
+    } else if (pointerCount === 2){
+      orbiting = false;
+      pinchStartDist = pointerDist();
+      pinchStartRadius = camState.radius;
+    }
+  });
+
+  canvas.addEventListener('pointermove', function(e){
+    if (!pointers[e.pointerId]) return;
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    pointerCount = Object.keys(pointers).length;
+
+    if (pointerCount === 2){
+      var d = pointerDist();
+      if (d > 0 && pinchStartDist > 0){
+        var scale = pinchStartDist / d;
+        camState.radius = clampNum(pinchStartRadius * scale, ZOOM_MIN, ZOOM_MAX);
+        updateCamera();
+      }
+      return;
+    }
+
+    if (pointerCount === 1 && orbiting){
+      var dx = e.clientX - lastX;
+      var dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      camState.theta -= dx * 0.006;
+      camState.phi -= dy * 0.006;
+      updateCamera();
+    }
+  });
+
+  function endPointer(e){
+    var wasDown = !!pointers[e.pointerId];
+    delete pointers[e.pointerId];
+    pointerCount = Object.keys(pointers).length;
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+
+    if (pointerCount === 0){
+      orbiting = false;
+      if (wasDown){
+        var dx = e.clientX - downX, dy = e.clientY - downY;
+        if (Math.sqrt(dx * dx + dy * dy) < 6){
+          handleStageTap(e.clientX, e.clientY);
+        }
+      }
+    } else if (pointerCount === 1){
+      var remainingId = Object.keys(pointers)[0];
+      lastX = pointers[remainingId].x;
+      lastY = pointers[remainingId].y;
+      orbiting = true;
+    }
+  }
+
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('pointerleave', function(e){
+    if (Object.keys(pointers).length <= 1) orbiting = false;
+  });
+
+  canvas.addEventListener('wheel', function(e){
+    e.preventDefault();
+    camState.radius = clampNum(camState.radius + e.deltaY * 0.0035, ZOOM_MIN, ZOOM_MAX);
+    updateCamera();
+  }, { passive: false });
+
+  document.getElementById('zoom-in').addEventListener('click', function(){
+    camState.radius = clampNum(camState.radius * 0.82, ZOOM_MIN, ZOOM_MAX);
+    updateCamera();
+  });
+  document.getElementById('zoom-out').addEventListener('click', function(){
+    camState.radius = clampNum(camState.radius * 1.22, ZOOM_MIN, ZOOM_MAX);
+    updateCamera();
+  });
+
+  /* ---------------------------------------------------------
+     Resize
+  --------------------------------------------------------- */
+  function resize(){
+    var w = stageEl.clientWidth, h = stageEl.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---------------------------------------------------------
+     Animation loop
+  --------------------------------------------------------- */
+  var clock = new THREE.Clock();
+
+  function easeOutBack(t){
+    var c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+  function easeOutCubic(t){
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function tick(){
+    requestAnimationFrame(tick);
+    var elapsedMs = clock.getElapsedTime() * 1000;
+
+    if (lidAnimStart !== null){
+      var lt = clampNum((elapsedMs - lidAnimStart) / lidAnimDuration, 0, 1);
+      lidPivot.rotation.x = lidAnimFrom + (lidAnimTo - lidAnimFrom) * easeOutCubic(lt);
+      if (lt >= 1){
+        lidAnimStart = null;
+        if (lidAnimCallback){
+          var cb = lidAnimCallback;
+          lidAnimCallback = null;
+          cb();
+        }
+      }
+    }
+
+    for (var i = animQueue.length - 1; i >= 0; i--){
+      var item = animQueue[i];
+      if (item.started === null){
+        if (elapsedMs < item.delay) continue;
+        item.started = elapsedMs;
+      }
+      var t = Math.min(1, (elapsedMs - item.started) / item.duration);
+      var scaleT = easeOutBack(t);
+      item.obj.scale.setScalar(Math.max(0.001, scaleT) * FOOD_SCALE);
+      item.obj.position.y = item.startY + (item.endY - item.startY) * easeOutCubic(t);
+      if (t >= 1) animQueue.splice(i, 1);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  resize();
+  updateCamera();
+  randomBoxColor();
+  generateRandomContents();
+  openBox();
+  updateSummary();
+  tick();
+})();
+</script>
+</body>
+</html>
